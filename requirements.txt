@@ -1,6 +1,4 @@
-fastapi
-uvicorn
+streamlit
 opencv-python
 mediapipe
 numpy
-python-multipart
