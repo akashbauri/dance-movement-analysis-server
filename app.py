@@ -1,24 +1,33 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
+import streamlit as st
 import cv2
 import mediapipe as mp
 import numpy as np
 import tempfile
 import json
-from typing import Dict, List
-import uvicorn
 import os
+from typing import Dict, List
+import time
 
-app = FastAPI(title="Dance Movement Analysis API", version="1.0.0")
+# Configure page
+st.set_page_config(
+    page_title="Dance Movement Analysis Server",
+    page_icon="💃",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # Initialize MediaPipe
-mp_pose = mp.solutions.pose
-pose = mp_pose.Pose(
-    static_image_mode=False,
-    model_complexity=1,
-    enable_segmentation=False,
-    min_detection_confidence=0.5
-)
+@st.cache_resource
+def load_pose_model():
+    """Load MediaPipe pose detection model"""
+    mp_pose = mp.solutions.pose
+    pose = mp_pose.Pose(
+        static_image_mode=False,
+        model_complexity=1,
+        enable_segmentation=False,
+        min_detection_confidence=0.5
+    )
+    return pose, mp_pose
 
 class DanceAnalyzer:
     def __init__(self):
@@ -31,7 +40,7 @@ class DanceAnalyzer:
             "squat": "Knees bent, low position"
         }
 
-    def analyze_pose(self, landmarks) -> List[str]:
+    def analyze_pose(self, landmarks, mp_pose) -> List[str]:
         """Analyze detected landmarks to identify dance poses"""
         detected_poses = []
 
@@ -53,6 +62,3 @@ class DanceAnalyzer:
             detected_poses.append("arms_up")
 
         # Side stretch detection  
-        if (abs(left_wrist.x - left_shoulder.x) > 0.2 and 
-            abs(right_wrist.x - right_shoulder.x) > 0.2):
-            detected_poses.append("side_stretch")
