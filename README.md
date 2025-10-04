@@ -1,82 +1,66 @@
 Dance Movement Analysis Server
 🎯 Project Overview
-A cloud-deployed AI/ML server that analyzes body movements from uploaded dance videos using MediaPipe and OpenCV. The system detects dance poses, tracks body keypoints, and provides detailed movement analysis through REST API endpoints.
+A cloud-deployed AI/ML server that analyzes body movements from uploaded dance videos using MediaPipe and OpenCV. Built with Streamlit for the Callus Company Inc. AI ML Server Engineer competency assessment.
+
+The system detects dance poses, tracks body keypoints, and provides detailed movement analysis through an interactive web interface.
 
 🏗️ Architecture
-Backend: FastAPI with MediaPipe pose detection
+Frontend: Streamlit web application with file upload
 
-Containerization: Docker with multi-stage optimization
+AI/ML Engine: MediaPipe pose detection + OpenCV video processing
 
-Cloud Deployment: Google Cloud Compute Engine (Free Tier)
+Cloud Deployment: Streamlit Community Cloud (100% free)
 
-AI/ML Stack: MediaPipe + OpenCV + NumPy
+Processing: Real-time video analysis with progress tracking
 
 ⚡ Quick Start
 Local Development
+bash
 # Clone repository
-git clone <your-repo-url>
-cd dance-analysis-server
+git clone https://github.com/akashbauri/dance-movement-analysis-server.git
+cd dance-movement-analysis-server
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Run server
-python app.py
-Docker Deployment
-bash
-# Build container
-docker build -t dance-analyzer .
+# Run Streamlit app
+streamlit run streamlit_app.py
+Access Local App
+Open browser to: http://localhost:8501
 
-# Run container
-docker run -p 8000:8000 dance-analyzer
-🌐 API Endpoints
-Health Check
-text
-GET /health
-Response: {"status": "healthy", "service": "dance-analysis"}
-Video Analysis
-text
-POST /analyze-dance/
-Content-Type: multipart/form-data
-Body: video file (mp4, avi, mov)
+Upload dance videos and get instant analysis
 
-Response: {
-  "video_analysis": {
-    "total_frames": 120,
-    "frames_with_poses": 85,
-    "unique_poses_detected": ["arms_up", "side_stretch", "squat"],
-    "pose_descriptions": {...}
-  },
-  "summary": {
-    "analysis_quality": "high",
-    "dominant_poses": [...],
-    "movement_complexity": "high"
-  }
-}
-🧪 Testing
-bash
-# Run unit tests
-python -m unittest test_analyzer.py
+🌐 Live Demo
+Streamlit Cloud URL: [Your app will be deployed here]
 
-# Test API endpoint
-curl -X POST "http://localhost:8000/analyze-dance/" \
-     -H "accept: application/json" \
-     -H "Content-Type: multipart/form-data" \
-     -F "file=@dance_video.mp4"
-🚀 Cloud Deployment
-Google Cloud Setup
-Create GCP free tier account
+Features Available:
+Video Upload: Drag & drop or browse for dance videos
 
-Launch e2-micro VM instance (Ubuntu 20.04)
+Real-time Processing: Live progress tracking during analysis
 
-Install Docker on VM
+Interactive Results: Visual pose detection summaries
 
-Clone repository and build container
+JSON Export: Download detailed analysis results
 
-Run with port 8000 exposed
+API Documentation: Complete technical specifications
 
-Deployment Commands
-bash
-# On GCP VM
-git clone <repo-url>
-cd dance-analys
+🔧 Technical Implementation
+AI/ML Processing Pipeline:
+Video Upload → Streamlit file uploader
+
+Validation → Check file format and size
+
+MediaPipe Analysis → 33-point body landmark detection
+
+Pose Classification → Custom algorithm for dance poses
+
+Results Display → Interactive metrics and visualizations
+
+JSON Export → Structured analysis data
+
+Detected Dance Poses:
+Arms Up: Arms raised above shoulders
+
+Side Stretch: Arms extended to sides
+
+Squat: Kn
