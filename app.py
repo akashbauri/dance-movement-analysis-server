@@ -30,14 +30,14 @@ class MockVideoAnalyzer:
         for i in range(100):
             progress_bar.progress(i + 1)
             status_text.text(f'Processing video analysis... {i+1}%')
-            time.sleep(0.02)  # Small delay for realistic feel
+            time.sleep(0.02)
 
         progress_bar.empty()
         status_text.empty()
 
-        # Generate mock analysis results
+        # Generate mock analysis results - FIXED JSON structure
         file_size_mb = file_size / (1024 * 1024)
-        estimated_frames = int(file_size_mb * 30)  # Rough estimate
+        estimated_frames = int(file_size_mb * 30)
 
         analysis_result = {
             "video_analysis": {
@@ -56,4 +56,4 @@ class MockVideoAnalyzer:
             },
             "technical_details": {
                 "algorithm": "Mock Analysis Engine v1.0",
-                "processing_method":
+                "processing_method": "Streamlit Cloud Optimized",
