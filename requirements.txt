@@ -1,1 +1,7 @@
-streamlit
+fastapi
+uvicorn[standard]
+mediapipe
+opencv-python-headless
+numpy
+python-multipart
+pytest
