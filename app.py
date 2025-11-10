@@ -1,60 +1,51 @@
-# app.py
-import os
-import uuid
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import FileResponse
-from pathlib import Path
+import gradio as gr
 from analyze_dance import process_video
+import os
+import shutil
 
-UPLOAD_DIR = Path("uploads")
-OUTPUT_DIR = Path("output")
-UPLOAD_DIR.mkdir(exist_ok=True)
-OUTPUT_DIR.mkdir(exist_ok=True)
+# Function to analyze dance and return downloadable output
+def analyze_dance(video_path):
+    output_path = "output.mp4"
+    process_video(video_path, output_path)
 
-app = FastAPI(title="Dance Movement Analysis API")
+    # Create downloadable copy
+    download_path = "analyzed_dance.mp4"
+    shutil.copy(output_path, download_path)
 
-
-@app.post("/upload")
-async def upload_video(file: UploadFile = File(...)):
-    """
-    Accepts a video file, saves it, runs the pose overlay processing,
-    and returns the path to the processed video.
-    """
-    # Basic validation
-    if not file.filename.lower().endswith((".mp4", ".mov", ".avi", ".mkv")):
-        raise HTTPException(status_code=400, detail="Unsupported file type. Use mp4/mov/avi/mkv.")
-
-    uid = uuid.uuid4().hex
-    input_path = UPLOAD_DIR / f"{uid}_{file.filename}"
-    output_path = OUTPUT_DIR / f"{uid}_processed.mp4"
-
-    # Save uploaded file
-    with input_path.open("wb") as f:
-        content = await file.read()
-        f.write(content)
-
-    # Process
-    try:
-        frames, fps = process_video(str(input_path), str(output_path))
-    except Exception as e:
-        # remove input file to save space on failure
-        try:
-            input_path.unlink(missing_ok=True)
-        except Exception:
-            pass
-        raise HTTPException(status_code=500, detail=f"Processing error: {e}")
-
-    return {"status": "success", "frames_processed": frames, "fps": fps, "download": f"/download/{output_path.name}"}
+    return output_path, "✅ Dance analysis complete! Pose landmarks visualized successfully.", download_path
 
 
-@app.get("/download/{file_name}")
-def download_result(file_name: str):
-    path = OUTPUT_DIR / file_name
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(path, media_type="video/mp4", filename=file_name)
+# Create Gradio interface
+with gr.Blocks(title="💃 AI Dance Movement Analyzer") as demo:
+    gr.Markdown(
+        """
+        # 💃 **Dance Movement Analysis with AI**
+        Upload your dance video (≤ 2 minutes, ≤ 25 MB) to visualize pose detection and motion accuracy using **MediaPipe Pose**.
+        This app:
+        - Detects body landmarks in real-time
+        - Displays FPS (performance)
+        - Shows pose confidence graph per frame
+        - Generates downloadable analyzed video
 
+        🧠 **Powered by:** OpenCV + MediaPipe + Gradio  
+        👨‍💻 **Created by:** [Akash Bauri](https://huggingface.co/akashbauri)
+        """
+    )
 
-@app.get("/")
-def root():
-    return {"message": "Dance Movement Analysis API. POST /upload with form-data 'file'."}
+    with gr.Row():
+        video_input = gr.Video(label="🎥 Upload MP4 Dance Video (≤2 minutes, ≤25 MB)")
+        output_video = gr.Video(label="🧩 Processed Output with Pose Analysis")
+
+    status = gr.Textbox(label="📊 Processing Status", interactive=False)
+    download_btn = gr.File(label="⬇️ Download Processed Video")
+
+    analyze_button = gr.Button("🚀 Start Analysis", variant="primary")
+
+    analyze_button.click(
+        fn=analyze_dance,
+        inputs=[video_input],
+        outputs=[output_video, status, download_btn],
+    )
+
+if __name__ == "__main__":
+    demo.launch(server_name="0.0.0.0", server_port=7860, share=False)
