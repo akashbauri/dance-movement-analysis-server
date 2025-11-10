@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  dance-analyzer:
+    build: .
+    container_name: dance_analysis_server
+    ports:
+      - "7860:7860"
+      - "8080:8080"
+    volumes:
+      - .:/app
+    restart: always
