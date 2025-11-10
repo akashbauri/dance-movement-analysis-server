@@ -1,77 +1,106 @@
-# analyze_dance.py
-import os
-from typing import Tuple
 import cv2
-import numpy as np
 import mediapipe as mp
+import os
+import numpy as np
+import time
 
-mp_drawing = mp.solutions.drawing_utils
+# Initialize MediaPipe pose and drawing utilities
 mp_pose = mp.solutions.pose
+mp_drawing = mp.solutions.drawing_utils
 
 
-def process_video(input_path: str, output_path: str, max_frames: int = None) -> Tuple[int, int]:
+def process_video(input_path, output_path):
     """
-    Process input video to overlay skeletons detected by MediaPipe Pose.
-    Args:
-      input_path: path to input video file.
-      output_path: path where output video with skeleton overlay will be saved.
-      max_frames: if provided, limit processing to this many frames (helpful for tests).
-    Returns:
-      (frame_count_processed, fps)
-    Raises:
-      FileNotFoundError if input_path doesn't exist.
+    Detects body landmarks in a dance video (up to 2 minutes, ≤25 MB)
+    Adds FPS and Pose Confidence overlay on the output video.
     """
+
     if not os.path.exists(input_path):
-        raise FileNotFoundError(f"Input file not found: {input_path}")
+        raise FileNotFoundError("Input video not found!")
 
     cap = cv2.VideoCapture(input_path)
-    if not cap.isOpened():
-        raise IOError(f"Could not open video: {input_path}")
 
-    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 640)
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 480)
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    fps = int(cap.get(cv2.CAP_PROP_FPS)) or 25
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
 
+    # Limit processing to 2 minutes max (~120 seconds)
+    max_frames = int(2 * 60 * fps)
+
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
+    prev_time = time.time()
     frame_count = 0
-    with mp_pose.Pose(static_image_mode=False, model_complexity=1, min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
+    confidence_values = []  # Store confidence per frame
+
+    with mp_pose.Pose(
+        static_image_mode=False,
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5
+    ) as pose:
+
         while True:
             ret, frame = cap.read()
-            if not ret:
-                break
-            frame_count += 1
-            if max_frames and frame_count > max_frames:
+            if not ret or frame_count >= max_frames:
                 break
 
-            # Convert BGR to RGB for Mediapipe
-            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = pose.process(image_rgb)
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = pose.process(frame_rgb)
 
-            # Draw skeleton if landmarks found
+            # Draw landmarks
             if results.pose_landmarks:
                 mp_drawing.draw_landmarks(
                     frame,
                     results.pose_landmarks,
                     mp_pose.POSE_CONNECTIONS,
                     mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
-                    mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=2),
+                    mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2)
                 )
 
+                # Calculate confidence: average visibility of landmarks
+                conf = np.mean([lm.visibility for lm in results.pose_landmarks.landmark])
+                confidence_values.append(conf)
+            else:
+                conf = 0.0
+                confidence_values.append(conf)
+
+            # Calculate FPS
+            curr_time = time.time()
+            fps_calc = 1 / (curr_time - prev_time)
+            prev_time = curr_time
+
+            # Add overlays (FPS + Confidence)
+            cv2.putText(frame, f"FPS: {fps_calc:.1f}", (20, 40),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 0), 2)
+            cv2.putText(frame, f"Pose Confidence: {conf:.2f}", (20, 80),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9,
+                        (0, 255, 0) if conf > 0.5 else (0, 0, 255), 2)
+
+            # Draw a small confidence graph at bottom
+            graph_h = 100
+            graph_y = height - graph_h
+            graph_x = 20
+            graph_w = min(400, width - 40)
+
+            cv2.rectangle(frame, (graph_x, graph_y - 10),
+                          (graph_x + graph_w, height - 10),
+                          (255, 255, 255), 1)
+            if len(confidence_values) > 1:
+                norm_conf = np.array(confidence_values[-int(graph_w/3):])
+                norm_conf = np.clip(norm_conf, 0, 1)
+                points = [
+                    (int(graph_x + i * 3), int(height - 10 - c * (graph_h - 20)))
+                    for i, c in enumerate(norm_conf)
+                ]
+                for i in range(1, len(points)):
+                    cv2.line(frame, points[i - 1], points[i], (0, 255, 0), 2)
+
             out.write(frame)
+            frame_count += 1
 
     cap.release()
     out.release()
-    return frame_count, int(fps)
+    cv2.destroyAllWindows()
 
-
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 3:
-        print("Usage: python analyze_dance.py <input_video> <output_video>")
-        sys.exit(1)
-    inp = sys.argv[1]
-    outp = sys.argv[2]
-    frames, fps = process_video(inp, outp)
-    print(f"Processed {frames} frames at {fps} fps -> {outp}")
+    return output_path
